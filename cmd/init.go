@@ -1,0 +1,72 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"syscall"
+
+	"github.com/spf13/cobra"
+
+	"github.com/sarthakagrawal/ax/internal"
+)
+
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize a new ax session",
+	Long: `Initialize a new ax session.
+
+If already inside tmux, sets AX_SESSION_ID on the current session and creates
+the session directory. If not inside tmux, creates a new detached tmux session
+named ax-<id>, sets AX_SESSION_ID on it, creates the session directory, then
+attaches to the new session (replacing the current process via exec).`,
+	PreRunE: preRunNoExistingSession,
+	RunE:    runInit,
+}
+
+func init() {
+	rootCmd.AddCommand(initCmd)
+}
+
+func runInit(cmd *cobra.Command, _ []string) error {
+	sessionID, err := internal.GenerateSessionID()
+	if err != nil {
+		return fmt.Errorf("generate session id: %w", err)
+	}
+
+	paths, err := internal.InitSessionDir(sessionID)
+	if err != nil {
+		return fmt.Errorf("init session dir: %w", err)
+	}
+
+	tmux := internal.NewTmuxClient()
+
+	if tmux.IsInsideTmux() {
+		if err := tmux.SetEnv("AX_SESSION_ID", sessionID); err != nil {
+			return fmt.Errorf("set AX_SESSION_ID: %w", err)
+		}
+		cmd.Printf("ax session initialized\nsession: %s\nstate:   %s\n", sessionID, paths.Root)
+		return nil
+	}
+
+	// Not inside tmux: create a detached session, configure it, then exec-attach.
+	sessionName := "ax-" + sessionID
+	if err := tmux.NewSession(sessionName); err != nil {
+		return fmt.Errorf("create tmux session: %w", err)
+	}
+
+	if err := tmux.SetEnv("AX_SESSION_ID", sessionID, sessionName); err != nil {
+		return fmt.Errorf("set AX_SESSION_ID on session %s: %w", sessionName, err)
+	}
+
+	cmd.Printf("ax session initialized\nsession: %s\nstate:   %s\nattaching...\n", sessionID, paths.Root)
+
+	tmuxPath, err := exec.LookPath("tmux")
+	if err != nil {
+		return fmt.Errorf("find tmux binary: %w", err)
+	}
+
+	// Replace current process with tmux attach-session so the terminal becomes
+	// the new tmux session.
+	return syscall.Exec(tmuxPath, []string{"tmux", "attach-session", "-t", sessionName}, os.Environ())
+}

@@ -48,16 +48,29 @@ func (t *TmuxClient) CurrentSessionName() (string, error) {
 	return out, nil
 }
 
-// PaneExists checks whether a pane ID still exists in the tmux server.
+// PaneExists checks whether a pane ID still exists and is alive. Uses
+// list-panes with a filter to find the exact pane — no fallback behavior
+// unlike display-message. Returns false if the pane doesn't exist or its
+// process has exited (pane_dead).
 func (t *TmuxClient) PaneExists(paneID string) bool {
-	_, err := tmuxOutput("display-message", "-t", paneID, "-p", "")
-	return err == nil
+	out, err := tmuxOutput("list-panes", "-a",
+		"-f", fmt.Sprintf("#{==:#{pane_id},%s}", paneID),
+		"-F", "#{pane_dead}")
+	if err != nil {
+		return false
+	}
+	return out == "0"
 }
 
-// GetEnv reads a tmux session-level environment variable.
-// The output from tmux is in format "NAME=value".
-func (t *TmuxClient) GetEnv(name string) (string, error) {
-	line, err := tmuxOutput("show-environment", name)
+// GetEnv reads a tmux session-level environment variable. If session is empty,
+// targets the current session.
+func (t *TmuxClient) GetEnv(name string, session ...string) (string, error) {
+	args := []string{"show-environment"}
+	if len(session) > 0 && session[0] != "" {
+		args = append(args, "-t", session[0])
+	}
+	args = append(args, name)
+	line, err := tmuxOutput(args...)
 	if err != nil {
 		return "", fmt.Errorf("get tmux env %s: %w", name, err)
 	}
@@ -68,9 +81,15 @@ func (t *TmuxClient) GetEnv(name string) (string, error) {
 	return value, nil
 }
 
-// SetEnv sets a tmux session-level environment variable.
-func (t *TmuxClient) SetEnv(name, value string) error {
-	if err := exec.Command("tmux", "set-environment", name, value).Run(); err != nil {
+// SetEnv sets a tmux session-level environment variable. If session is empty,
+// targets the current session.
+func (t *TmuxClient) SetEnv(name, value string, session ...string) error {
+	args := []string{"set-environment"}
+	if len(session) > 0 && session[0] != "" {
+		args = append(args, "-t", session[0])
+	}
+	args = append(args, name, value)
+	if err := exec.Command("tmux", args...).Run(); err != nil {
 		return fmt.Errorf("set tmux env %s: %w", name, err)
 	}
 	return nil
@@ -149,9 +168,10 @@ func (t *TmuxClient) CloseOnExit(paneID string) error {
 	return t.setPaneOption(paneID, "remain-on-exit", "off")
 }
 
-// setPaneOption sets a pane-level tmux option.
+// setPaneOption sets a pane-level tmux option. The -p flag is required to
+// target the pane itself; without it tmux interprets the target as a session.
 func (t *TmuxClient) setPaneOption(paneID, option, value string) error {
-	if err := exec.Command("tmux", "set-option", "-t", paneID, option, value).Run(); err != nil {
+	if err := exec.Command("tmux", "set-option", "-p", "-t", paneID, option, value).Run(); err != nil {
 		return fmt.Errorf("set pane option %s on %s: %w", option, paneID, err)
 	}
 	return nil
