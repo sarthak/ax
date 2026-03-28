@@ -10,8 +10,12 @@ A lightweight CLI enabling coding agents in tmux panes to discover each other an
 make build        # build the binary
 make run          # go run .
 make test         # unit tests (no tmux needed)
+make fmt          # auto-fix formatting (goimports) and tidy go.mod
+make lint         # run all linters and verify go.mod is tidy
 make clean        # remove binary
 ```
+
+**Always run `make fmt lint` after completing work** to ensure code is properly formatted and lint-clean.
 
 ## Project Structure
 

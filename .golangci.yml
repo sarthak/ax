@@ -1,0 +1,23 @@
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - typecheck
+    - gocritic
+    - gosimple
+    - misspell
+    - goimports
+    - revive
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/sarthakagrawal/ax
+  revive:
+    rules:
+      - name: blank-imports
+      - name: exported
+      - name: unreachable-code
+      - name: unused-parameter
