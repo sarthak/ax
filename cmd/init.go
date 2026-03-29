@@ -2,9 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -61,12 +58,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 
 	cmd.Printf("ax session initialized\nsession: %s\nstate:   %s\nattaching...\n", sessionID, paths.Root)
 
-	tmuxPath, err := exec.LookPath("tmux")
-	if err != nil {
-		return fmt.Errorf("find tmux binary: %w", err)
-	}
-
 	// Replace current process with tmux attach-session so the terminal becomes
 	// the new tmux session.
-	return syscall.Exec(tmuxPath, []string{"tmux", "attach-session", "-t", sessionName}, os.Environ())
+	return tmux.AttachSession(sessionName)
 }

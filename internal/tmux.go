@@ -5,23 +5,28 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 // TmuxClient wraps all tmux CLI interactions.
 type TmuxClient struct{}
 
-// tmuxOutput runs a tmux command and returns its trimmed stdout.
-func tmuxOutput(args ...string) (string, error) {
+// NewTmuxClient creates a new TmuxClient.
+func NewTmuxClient() *TmuxClient {
+	return &TmuxClient{}
+}
+
+// Run executes a tmux command and returns its trimmed stdout.
+// Socket-aware: prepends -L <socket> when AX_TMUX_SOCKET is set.
+func (t *TmuxClient) Run(args ...string) (string, error) {
+	if sock := os.Getenv("AX_TMUX_SOCKET"); sock != "" {
+		args = append([]string{"-L", sock}, args...)
+	}
 	out, err := exec.Command("tmux", args...).Output()
 	if err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
-}
-
-// NewTmuxClient creates a new TmuxClient.
-func NewTmuxClient() *TmuxClient {
-	return &TmuxClient{}
 }
 
 // IsInsideTmux returns true if the $TMUX env var is set (meaning we're inside
@@ -31,8 +36,14 @@ func (t *TmuxClient) IsInsideTmux() bool {
 }
 
 // CurrentPaneID returns the pane ID (%N format) of the current pane.
+// Prefers the TMUX_PANE env var (set per-pane by tmux) over display-message,
+// because display-message returns the focused pane which may differ from the
+// pane where the calling process is running.
 func (t *TmuxClient) CurrentPaneID() (string, error) {
-	out, err := tmuxOutput("display-message", "-p", "#{pane_id}")
+	if paneID := os.Getenv("TMUX_PANE"); paneID != "" {
+		return paneID, nil
+	}
+	out, err := t.Run("display-message", "-p", "#{pane_id}")
 	if err != nil {
 		return "", fmt.Errorf("current pane id: %w", err)
 	}
@@ -41,7 +52,7 @@ func (t *TmuxClient) CurrentPaneID() (string, error) {
 
 // CurrentSessionName returns the name of the current tmux session.
 func (t *TmuxClient) CurrentSessionName() (string, error) {
-	out, err := tmuxOutput("display-message", "-p", "#{session_name}")
+	out, err := t.Run("display-message", "-p", "#{session_name}")
 	if err != nil {
 		return "", fmt.Errorf("current session name: %w", err)
 	}
@@ -53,7 +64,7 @@ func (t *TmuxClient) CurrentSessionName() (string, error) {
 // unlike display-message. Returns false if the pane doesn't exist or its
 // process has exited (pane_dead).
 func (t *TmuxClient) PaneExists(paneID string) bool {
-	out, err := tmuxOutput("list-panes", "-a",
+	out, err := t.Run("list-panes", "-a",
 		"-f", fmt.Sprintf("#{==:#{pane_id},%s}", paneID),
 		"-F", "#{pane_dead}")
 	if err != nil {
@@ -70,7 +81,7 @@ func (t *TmuxClient) GetEnv(name string, session ...string) (string, error) {
 		args = append(args, "-t", session[0])
 	}
 	args = append(args, name)
-	line, err := tmuxOutput(args...)
+	line, err := t.Run(args...)
 	if err != nil {
 		return "", fmt.Errorf("get tmux env %s: %w", name, err)
 	}
@@ -89,7 +100,7 @@ func (t *TmuxClient) SetEnv(name, value string, session ...string) error {
 		args = append(args, "-t", session[0])
 	}
 	args = append(args, name, value)
-	if err := exec.Command("tmux", args...).Run(); err != nil {
+	if _, err := t.Run(args...); err != nil {
 		return fmt.Errorf("set tmux env %s: %w", name, err)
 	}
 	return nil
@@ -101,13 +112,11 @@ func (t *TmuxClient) SetEnv(name, value string, session ...string) error {
 // call without -l.
 func (t *TmuxClient) SendKeys(paneID string, text string) error {
 	// Send the literal text.
-	cmd := exec.Command("tmux", "send-keys", "-t", paneID, "-l", "--", text)
-	if err := cmd.Run(); err != nil {
+	if _, err := t.Run("send-keys", "-t", paneID, "-l", "--", text); err != nil {
 		return fmt.Errorf("send keys (text) to %s: %w", paneID, err)
 	}
 	// Press Enter.
-	cmd = exec.Command("tmux", "send-keys", "-t", paneID, "Enter")
-	if err := cmd.Run(); err != nil {
+	if _, err := t.Run("send-keys", "-t", paneID, "Enter"); err != nil {
 		return fmt.Errorf("send keys (enter) to %s: %w", paneID, err)
 	}
 	return nil
@@ -128,7 +137,7 @@ func (t *TmuxClient) SendFormattedMessage(paneID, senderLabel, senderRole, messa
 // NewSession creates a new detached tmux session with the given name.
 // It does NOT attach — the caller handles attachment separately.
 func (t *TmuxClient) NewSession(name string) error {
-	if err := exec.Command("tmux", "new-session", "-d", "-s", name).Run(); err != nil {
+	if _, err := t.Run("new-session", "-d", "-s", name); err != nil {
 		return fmt.Errorf("new session %s: %w", name, err)
 	}
 	return nil
@@ -137,7 +146,7 @@ func (t *TmuxClient) NewSession(name string) error {
 // SplitH creates a horizontal split (new pane to the right) and returns the
 // new pane ID.
 func (t *TmuxClient) SplitH() (string, error) {
-	out, err := tmuxOutput("split-window", "-h", "-P", "-F", "#{pane_id}")
+	out, err := t.Run("split-window", "-h", "-P", "-F", "#{pane_id}")
 	if err != nil {
 		return "", fmt.Errorf("split horizontal: %w", err)
 	}
@@ -146,7 +155,7 @@ func (t *TmuxClient) SplitH() (string, error) {
 
 // SplitV creates a vertical split (new pane below) and returns the new pane ID.
 func (t *TmuxClient) SplitV() (string, error) {
-	out, err := tmuxOutput("split-window", "-v", "-P", "-F", "#{pane_id}")
+	out, err := t.Run("split-window", "-v", "-P", "-F", "#{pane_id}")
 	if err != nil {
 		return "", fmt.Errorf("split vertical: %w", err)
 	}
@@ -156,7 +165,7 @@ func (t *TmuxClient) SplitV() (string, error) {
 // NewWindow creates a new tmux window and returns the pane ID of its initial
 // pane.
 func (t *TmuxClient) NewWindow() (string, error) {
-	out, err := tmuxOutput("new-window", "-P", "-F", "#{pane_id}")
+	out, err := t.Run("new-window", "-P", "-F", "#{pane_id}")
 	if err != nil {
 		return "", fmt.Errorf("new window: %w", err)
 	}
@@ -171,8 +180,23 @@ func (t *TmuxClient) CloseOnExit(paneID string) error {
 // setPaneOption sets a pane-level tmux option. The -p flag is required to
 // target the pane itself; without it tmux interprets the target as a session.
 func (t *TmuxClient) setPaneOption(paneID, option, value string) error {
-	if err := exec.Command("tmux", "set-option", "-p", "-t", paneID, option, value).Run(); err != nil {
+	if _, err := t.Run("set-option", "-p", "-t", paneID, option, value); err != nil {
 		return fmt.Errorf("set pane option %s on %s: %w", option, paneID, err)
 	}
 	return nil
+}
+
+// AttachSession replaces the current process with tmux attach-session.
+// Socket-aware via AX_TMUX_SOCKET. Does not return on success.
+func (t *TmuxClient) AttachSession(name string) error {
+	tmuxPath, err := exec.LookPath("tmux")
+	if err != nil {
+		return fmt.Errorf("find tmux binary: %w", err)
+	}
+	args := []string{"tmux"}
+	if sock := os.Getenv("AX_TMUX_SOCKET"); sock != "" {
+		args = append(args, "-L", sock)
+	}
+	args = append(args, "attach-session", "-t", name)
+	return syscall.Exec(tmuxPath, args, os.Environ())
 }

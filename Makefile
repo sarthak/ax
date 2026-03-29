@@ -1,6 +1,6 @@
 BIN := ax
 
-.PHONY: build run clean test lint fmt
+.PHONY: build run clean test test-integration lint fmt
 
 build:
 	go build -o $(BIN) .
@@ -10,6 +10,9 @@ run:
 
 test:
 	go test ./...
+
+test-integration: build
+	go test -tags integration -v -count=1 -timeout 60s ./e2e/
 
 clean:
 	rm -f $(BIN)
