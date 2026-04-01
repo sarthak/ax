@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // TmuxClient wraps all tmux CLI interactions.
@@ -115,6 +116,9 @@ func (t *TmuxClient) SendKeys(paneID string, text string) error {
 	if _, err := t.Run("send-keys", "-t", paneID, "-l", "--", text); err != nil {
 		return fmt.Errorf("send keys (text) to %s: %w", paneID, err)
 	}
+	// Brief pause before Enter — some agents (e.g. Codex) misinterpret a
+	// rapid text+Enter sequence as Shift+Enter.
+	time.Sleep(100 * time.Millisecond)
 	// Press Enter.
 	if _, err := t.Run("send-keys", "-t", paneID, "Enter"); err != nil {
 		return fmt.Errorf("send keys (enter) to %s: %w", paneID, err)
