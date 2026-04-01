@@ -94,7 +94,11 @@ func runSend(cmd *cobra.Command, args []string) error {
 	var failedLabels []string
 
 	for _, target := range targets {
-		if !tmux.PaneExists(target.TmuxPaneID) {
+		alive, paneErr := tmux.PaneExists(target.TmuxPaneID)
+		if paneErr != nil {
+			return fmt.Errorf("check pane for %q: %w", target.Label, paneErr)
+		}
+		if !alive {
 			if updateErr := registry.UpdateStatus(target.Label, internal.StatusDead); updateErr != nil {
 				// Log but don't mask the original dead-pane error.
 				cmd.PrintErrf("warning: could not update status for %q: %v\n", target.Label, updateErr)

@@ -50,8 +50,12 @@ func runWho(cmd *cobra.Command, _ []string) error {
 
 	entries := make([]agentInfo, len(agents))
 	for i, agent := range agents {
+		alive, err := tmux.PaneExists(agent.TmuxPaneID)
+		if err != nil {
+			return fmt.Errorf("check pane for %q: %w", agent.Label, err)
+		}
 		status := "dead"
-		if tmux.PaneExists(agent.TmuxPaneID) {
+		if alive {
 			status = "alive"
 		}
 		entries[i] = agentInfo{

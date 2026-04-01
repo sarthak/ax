@@ -61,17 +61,17 @@ func (t *TmuxClient) CurrentSessionName() (string, error) {
 }
 
 // PaneExists checks whether a pane ID still exists and is alive. Uses
-// list-panes with a filter to find the exact pane — no fallback behavior
-// unlike display-message. Returns false if the pane doesn't exist or its
-// process has exited (pane_dead).
-func (t *TmuxClient) PaneExists(paneID string) bool {
+// list-panes with a filter to find the exact pane. Returns (true, nil) if
+// alive, (false, nil) if the pane doesn't exist or its process has exited,
+// and (false, err) if the tmux command itself failed (e.g. socket error).
+func (t *TmuxClient) PaneExists(paneID string) (bool, error) {
 	out, err := t.Run("list-panes", "-a",
 		"-f", fmt.Sprintf("#{==:#{pane_id},%s}", paneID),
 		"-F", "#{pane_dead}")
 	if err != nil {
-		return false
+		return false, fmt.Errorf("check pane %s: %w", paneID, err)
 	}
-	return out == "0"
+	return out == "0", nil
 }
 
 // GetEnv reads a tmux session-level environment variable. If session is empty,
@@ -83,14 +83,16 @@ func (t *TmuxClient) GetEnv(name string, session ...string) (string, error) {
 	}
 	args = append(args, name)
 	line, err := t.Run(args...)
-	if err != nil {
-		return "", fmt.Errorf("get tmux env %s: %w", name, err)
+	if err == nil {
+		if _, value, found := strings.Cut(line, "="); found {
+			return value, nil
+		}
 	}
-	_, value, found := strings.Cut(line, "=")
-	if !found {
-		return "", fmt.Errorf("get tmux env %s: unexpected format %q", name, line)
+	// Fallback to process environment.
+	if value := os.Getenv(name); value != "" {
+		return value, nil
 	}
-	return value, nil
+	return "", fmt.Errorf("get env %s: not found in tmux session or process environment", name)
 }
 
 // SetEnv sets a tmux session-level environment variable. If session is empty,

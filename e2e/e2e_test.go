@@ -97,7 +97,9 @@ func TestFullLifecycle(t *testing.T) {
 		require.NotEmpty(t, agent2PaneID, "agent-2 not found in registry")
 
 		// Verify the pane actually exists.
-		assert.True(t, h.tmux.PaneExists(agent2PaneID), "spawned pane %s should exist", agent2PaneID)
+		alive, err := h.tmux.PaneExists(agent2PaneID)
+		require.NoError(t, err, "PaneExists should not fail")
+		assert.True(t, alive, "spawned pane %s should exist", agent2PaneID)
 	})
 
 	t.Run("04_send_direct", func(t *testing.T) {
