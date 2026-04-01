@@ -42,6 +42,9 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		if err := tmux.SetEnv("AX_SESSION_ID", sessionID); err != nil {
 			return fmt.Errorf("set AX_SESSION_ID: %w", err)
 		}
+		if err := tmux.SetEnv("AX_SESSION_DIR", paths.Root); err != nil {
+			return fmt.Errorf("set AX_SESSION_DIR: %w", err)
+		}
 		cmd.Printf("ax session initialized\nsession: %s\nstate:   %s\n", sessionID, paths.Root)
 		return nil
 	}
@@ -54,6 +57,9 @@ func runInit(cmd *cobra.Command, _ []string) error {
 
 	if err := tmux.SetEnv("AX_SESSION_ID", sessionID, sessionName); err != nil {
 		return fmt.Errorf("set AX_SESSION_ID on session %s: %w", sessionName, err)
+	}
+	if err := tmux.SetEnv("AX_SESSION_DIR", paths.Root, sessionName); err != nil {
+		return fmt.Errorf("set AX_SESSION_DIR on session %s: %w", sessionName, err)
 	}
 
 	cmd.Printf("ax session initialized\nsession: %s\nstate:   %s\nattaching...\n", sessionID, paths.Root)
