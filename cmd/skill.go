@@ -2,6 +2,7 @@ package cmd
 
 import (
 	_ "embed"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -24,6 +25,6 @@ func init() {
 }
 
 func runSkill(cmd *cobra.Command, _ []string) error {
-	cmd.Print(skillContent)
+	fmt.Fprint(cmd.OutOrStdout(), skillContent)
 	return nil
 }
