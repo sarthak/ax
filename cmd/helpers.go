@@ -26,7 +26,7 @@ func preRunRequireSession(_ *cobra.Command, _ []string) error {
 
 	sessionID, err := tmux.GetEnv("AX_SESSION_ID")
 	if err != nil {
-		return fmt.Errorf("AX_SESSION_ID not set — run `ax init` first")
+		return fmt.Errorf("not inside an ax session — run `ax init` first")
 	}
 
 	paths, err := internal.LoadSessionPaths(sessionID)

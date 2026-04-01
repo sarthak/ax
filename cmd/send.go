@@ -28,6 +28,8 @@ Messages are wrapped in the ax protocol format before delivery:
 
 If a target pane is no longer alive, its status is updated in the registry
 and an error is reported. If all targets are dead, the command exits with an error.`,
+	Example: `  ax send codex-1 "review ready, see comms/claude-1/plan.md"
+  ax send --role reviewer "please review my latest changes"`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if sendRole != "" {
 			return cobra.ExactArgs(1)(cmd, args)
@@ -59,7 +61,7 @@ func runSend(cmd *cobra.Command, args []string) error {
 
 	sender := registry.FindByPaneID(currentPaneID)
 	if sender == nil {
-		return fmt.Errorf("not registered as an agent, run `ax join` first")
+		return fmt.Errorf("not registered as an agent in this session (run `ax join` first)")
 	}
 
 	// Resolve targets.

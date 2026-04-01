@@ -13,10 +13,12 @@ var initCmd = &cobra.Command{
 	Short: "Initialize a new ax session",
 	Long: `Initialize a new ax session.
 
-If already inside tmux, sets AX_SESSION_ID on the current session and creates
-the session directory. If not inside tmux, creates a new detached tmux session
-named ax-<id>, sets AX_SESSION_ID on it, creates the session directory, then
-attaches to the new session (replacing the current process via exec).`,
+If already inside tmux, configures the current session for ax (sets AX_SESSION_ID
+and AX_SESSION_DIR environment variables) and creates the session directory.
+
+If not inside tmux, creates a new tmux session named ax-<id>, configures it,
+creates the session directory, then attaches to the new session.`,
+	Example: `  ax init`,
 	PreRunE: preRunNoExistingSession,
 	RunE:    runInit,
 }

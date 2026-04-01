@@ -29,11 +29,12 @@ For layout requirements beyond what --layout provides (e.g., specific pane
 sizes, moving a pane to a different window, swapping pane positions), use tmux
 CLI commands directly after ax spawn completes. Pane IDs (%N) are stable across
 rearrangement operations, so the session registry remains valid after any tmux
-layout change.
+layout change.`,
+	Example: `  ax spawn --role reviewer --label codex-1 "claude"
+  ax spawn --role implementer --label claude-2 --layout vsplit "claude"
 
-Example:
-  ax spawn --role reviewer --label codex-1 "claude --dangerously-skip-permissions"
-  # then adjust layout with tmux directly if needed:
+  # adjust layout with tmux directly after spawning:
+  ax spawn --role reviewer --label codex-1 "claude"
   tmux resize-pane -t %5 -x 80`,
 	Args:    cobra.ExactArgs(1),
 	PreRunE: preRunRequireSession,
