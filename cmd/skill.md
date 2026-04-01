@@ -1,6 +1,6 @@
 ---
 name: ax
-description: This skill teaches you how to use the ax CLI to discover, spawn & communicate with other coding agents in a tmux session. Use this skill either when a user asks you spawn / communicate with other agents explicitly, or when you receive a prompt that looks like a ax sms "[ax sms from <label> (<role>)]: <message>".
+description: 'This skill teaches you how to use the ax CLI to discover, spawn & communicate with other coding agents in a tmux session. Use this skill either when a user asks you spawn / communicate with other agents explicitly, or when you receive a prompt that looks like a ax sms "[ax sms from <label> (<role>)]: <message>".'
 ---
 
 # `ax` - agent exchange CLI
