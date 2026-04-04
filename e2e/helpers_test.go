@@ -65,13 +65,12 @@ func newTmuxHarness(t *testing.T) *tmuxHarness {
 		stateDir: stateDir,
 	}
 
-	// Create the initial tmux session.
-	err = tmux.NewSession("e2e")
+	// Create the initial tmux session with env vars so the initial pane inherits them.
+	err = tmux.NewSession("e2e", map[string]string{
+		"AX_TMUX_SOCKET": socket,
+		"AX_STATE_DIR":   stateDir,
+	})
 	require.NoError(t, err, "failed to create test tmux session")
-
-	// Set env vars on the tmux session so all panes inherit them.
-	require.NoError(t, tmux.SetEnv("AX_TMUX_SOCKET", socket, "e2e"))
-	require.NoError(t, tmux.SetEnv("AX_STATE_DIR", stateDir, "e2e"))
 
 	return h
 }

@@ -142,8 +142,14 @@ func (t *TmuxClient) SendFormattedMessage(paneID, senderLabel, senderRole, messa
 
 // NewSession creates a new detached tmux session with the given name.
 // It does NOT attach — the caller handles attachment separately.
-func (t *TmuxClient) NewSession(name string) error {
-	if _, err := t.Run("new-session", "-d", "-s", name); err != nil {
+// Optional env vars are passed via -e flags so the initial pane's shell
+// inherits them immediately (tmux 3.2+).
+func (t *TmuxClient) NewSession(name string, env map[string]string) error {
+	args := []string{"new-session", "-d", "-s", name}
+	for k, v := range env {
+		args = append(args, "-e", fmt.Sprintf("%s=%s", k, v))
+	}
+	if _, err := t.Run(args...); err != nil {
 		return fmt.Errorf("new session %s: %w", name, err)
 	}
 	return nil

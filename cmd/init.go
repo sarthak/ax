@@ -51,17 +51,15 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Not inside tmux: create a detached session, configure it, then exec-attach.
+	// Not inside tmux: create a detached session with env vars set at creation
+	// time so the initial pane's shell inherits them immediately.
 	sessionName := "ax-" + sessionID
-	if err := tmux.NewSession(sessionName); err != nil {
+	env := map[string]string{
+		"AX_SESSION_ID":  sessionID,
+		"AX_SESSION_DIR": paths.Root,
+	}
+	if err := tmux.NewSession(sessionName, env); err != nil {
 		return fmt.Errorf("create tmux session: %w", err)
-	}
-
-	if err := tmux.SetEnv("AX_SESSION_ID", sessionID, sessionName); err != nil {
-		return fmt.Errorf("set AX_SESSION_ID on session %s: %w", sessionName, err)
-	}
-	if err := tmux.SetEnv("AX_SESSION_DIR", paths.Root, sessionName); err != nil {
-		return fmt.Errorf("set AX_SESSION_DIR on session %s: %w", sessionName, err)
 	}
 
 	cmd.Printf("ax session initialized\nsession: %s\nstate:   %s\nattaching...\n", sessionID, paths.Root)

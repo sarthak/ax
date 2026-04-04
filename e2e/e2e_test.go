@@ -33,6 +33,20 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestInitialPaneInheritsEnvVars(t *testing.T) {
+	h := newTmuxHarness(t)
+	paneID := h.initialPaneID()
+
+	// The harness passes AX_TMUX_SOCKET and AX_STATE_DIR via NewSession's -e
+	// flags. Verify the initial pane's shell inherited them (not just the tmux
+	// session environment).
+	err := h.tmux.SendKeys(paneID, "echo AX_SOCKET=$AX_TMUX_SOCKET AX_STATE=$AX_STATE_DIR")
+	require.NoError(t, err)
+
+	content := h.waitForPaneContent(paneID, "AX_SOCKET="+h.socket, 2*time.Second)
+	assert.Contains(t, content, "AX_STATE="+h.stateDir)
+}
+
 func TestFullLifecycle(t *testing.T) {
 	h := newTmuxHarness(t)
 	paneID := h.initialPaneID()
