@@ -79,6 +79,14 @@ Three pieces, that's it:
 - **A registry file is the phonebook.** `ax join` adds an agent (label, role, pane ID); `ax who` reads it back.
 - **`tmux send-keys` is the transport.** `ax send` types the message into the target agent's pane, prefixed so the receiver can recognize it as an inbound message.
 
+What actually lands in the receiver's pane looks like this:
+
+```
+[ax sms from claude-1 (implementer)]: review my plan at $AX_SESSION_DIR/comms/claude-1/plan.md
+```
+
+For the receiving agent to recognize that prefix as an inbound request and act on it — read the referenced file, reply via `ax send`, etc. — it needs to know what the format means. The recommended way to teach it is to install the [`ax` skill](#using-ax-with-coding-agents) described below; otherwise the agent will just see the text as a regular user message and probably ignore the convention.
+
 There's no daemon, no socket, no network. The session directory under `$AX_SESSION_DIR` holds the registry and a `comms/<label>/` directory per agent for any files they want to share.
 
 ## Using ax with coding agents
