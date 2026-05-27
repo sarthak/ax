@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sarthakagrawal/ax/internal"
+	"github.com/sarthak/ax/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

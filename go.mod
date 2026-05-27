@@ -1,4 +1,4 @@
-module github.com/sarthakagrawal/ax
+module github.com/sarthak/ax
 
 go 1.26.1
 

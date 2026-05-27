@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sarthakagrawal/ax/internal"
+	"github.com/sarthak/ax/internal"
 )
 
 // Package-level session state populated by preRunRequireSession.
